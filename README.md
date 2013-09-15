@@ -1,6 +1,7 @@
 PanoramaTabs
 ============
 
-The great "Panorama" feature of Firefox, on Chrome
+The great "Panorama" feature of Firefox, on Chrome.
 
-![Screenshot](Meta/screenshot_2013-09-15.png)
+Click to enlarge.
+![Screenshot](Meta/screenshot_2013-09-15.png?raw=1)
