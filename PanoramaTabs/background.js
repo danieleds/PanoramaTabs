@@ -1,3 +1,5 @@
+// Copyright (c) 2013 Daniele Di Sarli. All rights reserved.
+
 // true se abbiamo già ricevuto l'evento onFocusChanged dalla prima finestra creata
 var firstWndCreated = false;
 var saveTimeout;
