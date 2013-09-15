@@ -1,0 +1,20 @@
+{
+  "manifest_version": 2,
+
+  "name": "PanoramaTabs",
+  "description": "The great \"Panorama\" feature of Firefox, on Chrome",
+  "version": "1.0",
+
+  "permissions": [
+    "<all_urls>",
+    "tabs",
+    "storage"
+  ],
+  "background": {
+    "page": "background.html"
+  },
+  "browser_action": {
+    "default_icon": "images/icon.png",
+    "default_title": "Group your tabs"
+  }
+}
