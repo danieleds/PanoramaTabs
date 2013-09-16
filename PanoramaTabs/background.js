@@ -2,7 +2,7 @@
 
 // true se abbiamo già ricevuto l'evento onFocusChanged dalla prima finestra creata
 var firstWndCreated = false;
-var saveTimeout;
+var syncTimeout, timeoutRunning = false;
 var PANORAMA_PAGE_URL = 'chrome-extension://' + chrome.runtime.id + '/panorama.html';
 
 /*
@@ -96,11 +96,7 @@ function updateCurrentGroupWithVisibleTabs() {
         }
       
         info.groups[info.currentGroup].tabs = array;
-        
-        // FIXME IMPORTANT Trovare un compromesso: salvare qui ogni volta supera MAX_SUSTAINED_WRITE_OPERATIONS_PER_MINUTE
-        // Allo stesso tempo vogliamo evitare che, se il browser crasha, si perda troppa roba.
-        // Inoltre è impossibile prevedere quando il browser sta per chiudersi, quindi è un casino.
-        // http://developer.chrome.com/extensions/storage.html#property-sync-MAX_SUSTAINED_WRITE_OPERATIONS_PER_MINUTE
+        // FIXME Se lo chiamiamo qui, toglierlo dalle altre parti...
         saveGroups();
         
         // Se la tab visibile era una Panorama, dobbiamo riaggiornare la sua UI
@@ -115,20 +111,38 @@ function updateCurrentGroupWithVisibleTabs() {
   });
 }
 
-// FIXME Starvation se l'utente continua a smanettare con le tab e non si ferma mai
-function saveGroups() {
-  clearTimeout(saveTimeout);
-  saveTimeout = setTimeout(saveGroupsNow, 10000);
-}
-
-function saveGroupsNow() {
-  clearTimeout(saveTimeout);
+function saveGroups(syncNow) {
   getGroupInfo(function(info){
     try {
       var clean_groups = getCleanGroupsForStorage(info.groups);
-      chrome.storage.sync.set({'groups': clean_groups});
-      chrome.storage.sync.set({'currentGroup': info.currentGroup});
+      chrome.storage.local.set({'groups': clean_groups});
+      chrome.storage.local.set({'currentGroup': info.currentGroup}); // FIXME Controllare quanto spazio viene usato...
+      /*chrome.storage.local.getBytesInUse(null, function(b) {
+          console.log(b);
+      });*/
     } catch(ex) { }
+  });
+  
+  if(syncNow) {
+      syncGroups();
+  } else {
+      // Se non c'è nessuno che sta già aspettando di sincronizzare...
+      if(timeoutRunning == false) {
+          // Sincronizzo ora
+          syncGroups();
+          // E risincronizzo tra 30 secondi
+          timeoutRunning = true;
+          syncTimeout = setTimeout(syncGroups, 30000);
+      }
+  }
+}
+
+function syncGroups() {
+  clearTimeout(syncTimeout);
+  timeoutRunning = false;
+  chrome.storage.local.get(['groups', 'currentGroup'], function(items) {
+      chrome.storage.sync.set({'groups': items['groups']});
+      chrome.storage.sync.set({'currentGroup': items['currentGroup']});
   });
 }
 
@@ -241,11 +255,11 @@ function deleteGroup(id) {
         if(info.groups.length == 0) {
             // Abbiamo eliminato tutti i gruppi: creiamone uno nuovo, vuoto.
             addEmptyGroup("Default group", function(new_id) {
-                saveGroupsNow();
+                saveGroups();
                 loadGroup(new_id);
             });
         } else {
-            saveGroupsNow();
+            saveGroups();
             if(curGroup == id) { 
                 // È stato eliminato il gruppo su cui eravamo: dobbiamo cambiare le tab nel browser
                 loadGroup(info.currentGroup);
@@ -265,7 +279,7 @@ function addEmptyGroup(name, callback) {
             height: 300,
             tabs: []
         });
-        saveGroupsNow();
+        saveGroups();
         if(callback !== undefined) callback(r-1);
     });
 }
@@ -273,7 +287,7 @@ function addEmptyGroup(name, callback) {
 function renameGroup(groupId, newName) {
     getGroupInfo(function(info){
         info.groups[groupId].name = newName;
-        saveGroupsNow();
+        saveGroups();
     });
 }
 
@@ -418,7 +432,7 @@ function initWindow(windowId) {
     
         firstWndCreated = true;
         // Caricamento dello stato salvato (solo per la prima finestra aperta)
-        chrome.storage.sync.get(['groups', 'currentGroup'], function(items) {
+        chrome.storage.local.get(['groups', 'currentGroup'], function(items) {
             
             if(items.currentGroup !== undefined) {
                 info.currentGroup = items.currentGroup;
@@ -450,7 +464,7 @@ chrome.windows.onCreated.addListener(function(window) {
 
 // Ogni volta che cambia il focus forziamo il salvataggio dei gruppi
 chrome.windows.onFocusChanged.addListener(function(windowId) {
-    saveGroupsNow();
+    saveGroups();
 });
 
 /* Al click sul pulsante, chiudiamo ogni eventuale tab Panorama precedentemente aperta.
