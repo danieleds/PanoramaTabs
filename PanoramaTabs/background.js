@@ -60,55 +60,52 @@ function startsWith(string, start) {
 function updateCurrentGroupWithVisibleTabs() {
   getGroupInfo(function(info){
     if(info !== undefined) {
-      chrome.tabs.query({currentWindow: true, windowType: 'normal'}, function(tabs) {
-      
-        var array = [];
-        var oldtabs = info.groups[info.currentGroup].tabs;
-        
-        for(var i = 0; i < tabs.length; i++) {
-        
-          // Evitiamo di salvarci le tab Panorama
-          if(isPanoramaTab(tabs[i])) break;
-        
-          // Facciamo un orrendo ciclo per ritrovare la vecchia tab (se c'era) e prenderne così il vecchio screenshot
-          if(oldtabs !== undefined) {
-            for(var j = 0; j < oldtabs.length; j++) {
-              if(tabs[i].id == oldtabs[j].id) {
-                tabs[i].screenshot = oldtabs[j].screenshot;
-                break;
-              }
-            }
+      chrome.windows.getCurrent({populate: false}, function(window) {
+          if(window !== undefined) {
+              updateGroupWithVisibleTabs(window.id, info.currentGroup);
           }
-          
-          // Se al momento l'utente sta guardando una tab Panorama, rischiamo di salvarci
-          // in memoria *quella* tab come ultima tab attiva. E non va bene, perché a noi serve
-          // la posizione dell'ultima tab attiva *non-panorama*. Questa posizione la troviamo
-          // nel campo lastActiveTabPos.
-          /*console.log('Going in...');
-          if(tabs[i].index == info.groups[info.currentGroup].lastActiveTabPos) {
-              console.log('Setto pos. ' + tabs[i].index + ' come attiva');
-              tabs[i].active = true;
-          } else {
-              tabs[i].active = false;
-          }*/
-          
-          array.push(tabs[i]);
-        }
-      
-        info.groups[info.currentGroup].tabs = array;
-        // FIXME Se lo chiamiamo qui, toglierlo dalle altre parti...
-        saveGroups();
-        
-        // Se la tab visibile era una Panorama, dobbiamo riaggiornare la sua UI
-        chrome.tabs.query({active: true, currentWindow: true, url: PANORAMA_PAGE_URL}, function(result){
-            if(result.length > 0) {
-                chrome.tabs.sendMessage(result[0].id, {msg: "loadUI"});
-            }
-        });
-        
       });
     }
   });
+}
+
+function updateGroupWithVisibleTabs(windowId, groupId) {
+    var info = panorama[windowId];
+    chrome.tabs.query({currentWindow: true, windowType: 'normal'}, function(tabs) {
+
+      var array = [];
+      var oldtabs = info.groups[groupId].tabs;
+      
+      for(var i = 0; i < tabs.length; i++) {
+      
+        // Evitiamo di salvarci le tab Panorama
+        if(isPanoramaTab(tabs[i])) break;
+      
+        // Facciamo un orrendo ciclo per ritrovare la vecchia tab (se c'era) e prenderne così il vecchio screenshot
+        if(oldtabs !== undefined) {
+          for(var j = 0; j < oldtabs.length; j++) {
+            if(tabs[i].id == oldtabs[j].id) {
+              tabs[i].screenshot = oldtabs[j].screenshot;
+              break;
+            }
+          }
+        }
+        
+        array.push(tabs[i]);
+      }
+
+      info.groups[groupId].tabs = array;
+      // FIXME Se lo chiamiamo qui, toglierlo dalle altre parti...
+      saveGroups();
+      
+      // Se la tab visibile era una Panorama, dobbiamo riaggiornare la sua UI
+      chrome.tabs.query({active: true, currentWindow: true, url: PANORAMA_PAGE_URL}, function(result){
+          if(result.length > 0) {
+              chrome.tabs.sendMessage(result[0].id, {msg: "loadUI"});
+          }
+      });
+      
+    });
 }
 
 function saveGroups(syncNow) {
@@ -222,10 +219,8 @@ function loadGroupInWindow(groupId, windowId, callback) {
               },
               function(tab){
                   count++;
-                  console.log(count);
                   if(count == group.tabs.length) {
                       // Viene eseguito solo dopo l'ultima tabs.create()
-                      console.log("end");
                       finish();
                   }
               });
@@ -359,8 +354,6 @@ function tabActivated(activeInfo) {
             
             var p = panorama[activeInfo.windowId];
             // Salviamo la posizione dell'ultima tab non-panorama che ha ricevuto il focus.
-            // FIXME Aprendo due volte di fila panorama.html (tramite pulsante), questo valore erra.
-            console.log("Pos. ultima tab attiva: " + tab.index);
             p.groups[p.currentGroup].lastActiveTabPos = tab.index;
         }
     });
@@ -434,13 +427,17 @@ function initWindow(windowId) {
         // Caricamento dello stato salvato (solo per la prima finestra aperta)
         chrome.storage.local.get(['groups', 'currentGroup'], function(items) {
             
-            if(items.currentGroup !== undefined) {
+            if(items.groups === undefined || items.currentGroup === undefined) {
+                // Panorama non era mai stato avviato: inseriamo nel gruppo predefinito le tab attive.
+                updateGroupWithVisibleTabs(windowId, 0);
+                enableChangeListeners();
+            } else {
                 info.currentGroup = items.currentGroup;
                 info.groups = items.groups;
+                
+                // La funzione si occupa anche di attivare i listener
+                loadGroupInWindow(info.currentGroup, windowId);
             }
-            
-            // La funzione si occupa anche di attivare i listener
-            loadGroupInWindow(info.currentGroup, windowId);
             
         });
         
