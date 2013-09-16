@@ -35,12 +35,16 @@ function getGroupInfoFromWindow(windowId) {
 // Ottiene l'ultima tab non-panorama che è stata attiva nel gruppo corrente
 function getLastActiveTab(callback) {
     getGroupInfo(function(info){
-        chrome.tabs.query({index: info.groups[info.currentGroup].lastActiveTabPos, currentWindow: true}, function(result){
-            if(result.length > 0)
-                callback(result[0]);
-            else
-                callback();
-        });
+        getTabFromPosition(info.groups[info.currentGroup].lastActiveTabPos, callback);
+    });
+}
+
+function getTabFromPosition(pos, callback) {
+    chrome.tabs.query({index: pos, currentWindow: true}, function(result){
+        if(result.length > 0)
+            callback(result[0]);
+        else
+            callback();
     });
 }
 
@@ -62,6 +66,9 @@ function updateCurrentGroupWithVisibleTabs() {
         var oldtabs = info.groups[info.currentGroup].tabs;
         
         for(var i = 0; i < tabs.length; i++) {
+        
+          // Evitiamo di salvarci le tab Panorama
+          if(isPanoramaTab(tabs[i])) break;
         
           // Facciamo un orrendo ciclo per ritrovare la vecchia tab (se c'era) e prenderne così il vecchio screenshot
           if(oldtabs !== undefined) {
@@ -148,10 +155,13 @@ function loadGroup(groupId, callback) {
 }
 
 /**
- *  Elimina tutte le schede aperte nel browser, e ci inserisce le schede contenute nel gruppo specificato.
+ *  Elimina tutte le schede aperte nel browser, e ci inserisce le schede contenute nel gruppo specificato (tranne le Panorama).
+ *  La tab attiva viene impostata a quella specificata nel campo lastActiveTabPos del gruppo.
  *  Aggiorna inoltre il valore "currentGroup".
  *  Se il gruppo specificato è già il gruppo corrente, vengono comunque ricaricate le schede.
  *  NB: all'inizio la funzione disattiva i listener e li riattiva al termine.
+ *  NB: se questo metodo viene chiamato da una tab Panorama nel browser, e il metodo
+ *      chiude quella stessa tab, il callback non funzionerà.
  */
 function loadGroupInWindow(groupId, windowId, callback) {
     info = getGroupInfoFromWindow(windowId);
@@ -188,26 +198,23 @@ function loadGroupInWindow(groupId, windowId, callback) {
           for(var i = 0; i < group.tabs.length; i++) {
               var tab = group.tabs[i];
               var active = (i == lastActiveTabPos);
-              if(isPanoramaTab(tab)) {
+
+              chrome.tabs.create({
+                windowId: windowId,
+                url: tab.url,
+                index: tab.index,
+                active: active,
+                pinned: tab.pinned
+              },
+              function(tab){
                   count++;
-              } else {
-                  chrome.tabs.create({
-                    windowId: windowId,
-                    url: tab.url,
-                    index: tab.index,
-                    active: active,
-                    pinned: tab.pinned
-                  },
-                  function(tab){
-                      count++;
-                      console.log(count);
-                      if(count == group.tabs.length) {
-                          // Viene eseguito solo dopo l'ultima tabs.create()
-                          console.log("end");
-                          finish();
-                      }
-                  });
-              }
+                  console.log(count);
+                  if(count == group.tabs.length) {
+                      // Viene eseguito solo dopo l'ultima tabs.create()
+                      console.log("end");
+                      finish();
+                  }
+              });
               // FIXME index è persistente? Ovvero se faccio add(index:99) e poi add(index:3), ottengo prima la 3 e dopo la 99?
           }
         } else {
@@ -304,15 +311,6 @@ function takeScreenshot(tabId, windowId) {
                 }
             }
         }
-    });
-}
-
-function cleanPanoramaTabs(callback) {
-    chrome.tabs.query({url: PANORAMA_PAGE_URL, windowId: chrome.windows.WINDOW_ID_CURRENT}, function(result){
-        var ids = [];
-        for(var i = 0; i < result.length; i++)
-            ids.push(result[i].id);
-        chrome.tabs.remove(ids, callback);
     });
 }
 
@@ -463,7 +461,7 @@ chrome.windows.onFocusChanged.addListener(function(windowId) {
  * gli avremmo chiuso le precedenti).
  * FIXME #01: Se ridimensioniamo il browser su una Panorama, succede casino con le dimensioni e l'overflow
  * FIXME Se la tab attiva è già una panorama, chiuderla e tornare alla precedente tab attiva nel gruppo attivo.
- * FIXME Se c'è già una vecchia tab panorama attiva, invece di chiuderla riattivarla! (stesso comportamento di chrome con la pagina settings)
+ * FIXME Se c'è già una vecchia tab panorama attiva, riattivare quella! (stesso comportamento di chrome con la pagina settings)
 */
 chrome.browserAction.onClicked.addListener(function(tab) {
     if(isPanoramaTab(tab)) {
@@ -475,8 +473,6 @@ chrome.browserAction.onClicked.addListener(function(tab) {
             });
         });
     } else {
-        cleanPanoramaTabs(function(){
-            chrome.tabs.create({url: 'panorama.html', active: true});
-        });
+        chrome.tabs.create({url: 'panorama.html', active: true});
     }
 });

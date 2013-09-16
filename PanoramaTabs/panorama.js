@@ -63,7 +63,6 @@ var tabsHandler = {
                   }
                   // \xa0 è &nbsp; e lo usiamo per evitare che, se il titolo è una stringa vuota, il layout si scassi
                   tab.find('.tab-title').text(_group.tabs[j].title || '\xa0');
-                  tab.attr('data-tab-id', _group.tabs[j].id);
                   tab.attr('data-tab-pos', j);
                   tab.attr('data-group-id', i);
                   if(i == curGroup && j == _group.lastActiveTabPos) {
@@ -125,7 +124,6 @@ var tabsHandler = {
   },
   
   tabClicked: function(e) {
-      tabId = $(this).attr('data-tab-id');
       tabPos = parseInt($(this).attr('data-tab-pos'));
       groupId = parseInt($(this).attr('data-group-id'));
 
@@ -136,17 +134,12 @@ var tabsHandler = {
               // coincida con quello della tab che è realmente caricata nel browser.
               // Dobbiamo quindi agire sulla posizione.
               chrome.tabs.query({index: tabPos, windowId: chrome.windows.WINDOW_ID_CURRENT}, function(result){
-                  chrome.tabs.update(result[0].id, {active: true}, function(){
+                  chrome.tabs.update(result[0].id, {active: true}, function() {
                       window.close();
                   });
               });
           } else {
-              // Settiamo tutte le tab a active=false tranne quella di id tabId
-              var group = info.groups[groupId];
-              for(var i = 0; i < group.tabs.length; i++) {
-                  var tab = group.tabs[i];
-                  tab.active = tab.id == tabId;
-              }
+              info.groups[groupId].lastActiveTabPos = tabPos;
               chrome.extension.getBackgroundPage().loadGroup(groupId);
           }
       });
