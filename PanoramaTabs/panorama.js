@@ -8,7 +8,6 @@
   
   FIXME
   La cronologia (tasto "indietro") non viene mantenuta al passaggio da un gruppo all'altro. Potrebbe non esserci soluzione al problema.
-  È possibile creare roba che termina fuori dal container grigio: da evitare (relativo a fixme #01 in background.js)
   Evitare che i gruppi si sovrappongano su drag o resize
 
 */
@@ -291,7 +290,12 @@ var tabsHandler = {
           resize: tabsHandler.groupResizing,
           stop: tabsHandler.updateGroupCoordinates
       });
-      div.draggable({ containment: "#groupsContainer", scroll: false, cancel: ".non-draggable", distance: 10,
+      div.draggable({
+          containment: "#groupsContainer",
+          scroll: true,
+          cancel: ".non-draggable",
+          distance: 10,
+          stack: ".group-box",
           stop: tabsHandler.updateGroupCoordinates
       });
       div.click(tabsHandler.groupClicked); // Deve stare sotto a "draggable" altrimenti cattura anche i click del dragging

@@ -470,7 +470,7 @@ chrome.windows.onFocusChanged.addListener(function(windowId) {
  * sopra noi lanciamo un refresh. Teoricamente può averne anche due o più aperte allo
  * stesso tempo (ma le avrà aperte digitando l'url a mano: se avesse premuto il pulsante
  * gli avremmo chiuso le precedenti).
- * FIXME #01: Se ridimensioniamo il browser su una Panorama, succede casino con le dimensioni e l'overflow
+ * FIXME Il container fa casino su resize (http://stackoverflow.com/questions/18836234/extend-body-when-absolute-positioned-element-is-outside-the-browser-window)
  * FIXME Se la tab attiva è già una panorama, chiuderla e tornare alla precedente tab attiva nel gruppo attivo.
  * FIXME Se c'è già una vecchia tab panorama attiva, riattivare quella! (stesso comportamento di chrome con la pagina settings)
 */
