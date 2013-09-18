@@ -2,13 +2,14 @@
 
 /*
   TODO
-  Z-order on click/drag/resize
+  Z-order on click/resize (non necessario se viene implementato #2)
+  Snap su drag/resize
   Drag 'n drop delle tab tra gruppi
   Pinned tabs: imitare il comportamento di Firefox (in pratica, ogni volta escludere le tab Pinned dalle operazioni che facciamo sui gruppi: loro non vanno toccate)
   
   FIXME
   La cronologia (tasto "indietro") non viene mantenuta al passaggio da un gruppo all'altro. Potrebbe non esserci soluzione al problema.
-  Evitare che i gruppi si sovrappongano su drag o resize
+  #2 Evitare che i gruppi si sovrappongano su drag o resize
 
 */
 
@@ -25,6 +26,7 @@ var tabsHandler = {
 
   initOnce: function() {
       /* Creazione gruppi col mouse */
+      // FIXME È possibile creare gruppi che terminano fuori da BODY
       $('#groupsContainer').selectable({
         cancel: ".group-box",
         start: function(event, ui) {
@@ -251,6 +253,28 @@ var tabsHandler = {
       chrome.extension.getBackgroundPage().renameGroup(groupId, newName);
   },
   
+  sortableTabOverGroup: function(event, ui) {
+      var group = $(this);
+      var tabs = group.find('.group-tab');
+      if(tabs.length > 0) {
+          var tab0 = $(tabs[0]);
+          ui.placeholder.width(tab0.width());
+          ui.placeholder.height(1); // Stesso super hack di poco sopra
+          
+          var tab0_picture = tab0.find('.tab-picture');
+          var dest_width = tab0_picture.width();
+          var dest_height = tab0_picture.height();
+          var dest_titlewidth = tab0.find('.tab-title').width();
+          
+          ui.item.find('.tab-picture').width(dest_width);
+          ui.item.find('.tab-picture').height(dest_height);
+          ui.item.find('.tab-title').width(dest_titlewidth);
+          
+          // FIXME in caso di overflow, correggere le dimensioni delle tab nel gruppo.
+          //tabsHandler.autoResizeGroupTabs(group);
+      }
+  },
+  
   // Disegna un gruppo, assegna tutti i vari listener, e lo restituisce.
   // NOTA: Il gruppo non viene anche aggiunto al DOM!!
   drawGroup: function(x, y, width, height, name, id) {
@@ -261,7 +285,7 @@ var tabsHandler = {
                               <div class="group-close-btn non-draggable"></div>\
                           </div>\
                           <!--<div class="content">-->\
-                            <div class="group-tabs group-clickable-area"></div>\
+                              <div class="group-tabs group-clickable-area"></div>\
                           <!--</div>-->\
                        </div>\
                   </div>')
@@ -298,6 +322,18 @@ var tabsHandler = {
           stack: ".group-box",
           stop: tabsHandler.updateGroupCoordinates
       });
+      div.find('.group-tabs').sortable({ // FIXME Drag su gruppo vuoto non funziona. Neanche su un gruppo "semivuoto", ovvero nell'area dove "group-tabs" non si estende.
+        containment: "#groupsContainer",
+        connectWith: "#groupsContainer .group-box .group-tabs",
+        helper: 'clone',
+        revert: 'invalid',
+        appendTo: '#groupsContainer',
+        tolerance: "pointer",
+        start: function(e, ui){
+            ui.placeholder.height(1); // Altezza forzata a 1px: super hack per evitare strani salti nel posizionamento del placeholder.
+        },
+        over: tabsHandler.sortableTabOverGroup
+      }).disableSelection();
       div.click(tabsHandler.groupClicked); // Deve stare sotto a "draggable" altrimenti cattura anche i click del dragging
       
       div.css('position', ''); // Elimina il valore 'position' che viene dato da draggable... noi abbiamo il nostro position=absolute nel CSS
