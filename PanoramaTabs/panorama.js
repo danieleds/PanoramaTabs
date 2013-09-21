@@ -13,6 +13,9 @@
 
 */
 
+// FIXME Spostare tutte queste variabili globali all'interno di tabsHandler
+var _DBG_ENABLE_TAB_DRAGGING = false;
+
 var MIN_GROUP_WIDTH = 100;
 var MIN_GROUP_HEIGHT = 100;
 var TAB_PICTURE_ASPECT_RATIO = 4/3;
@@ -322,18 +325,20 @@ var tabsHandler = {
           stack: ".group-box",
           stop: tabsHandler.updateGroupCoordinates
       });
-      div.find('.group-tabs').sortable({ // FIXME Drag su gruppo vuoto non funziona. Neanche su un gruppo "semivuoto", ovvero nell'area dove "group-tabs" non si estende.
-        containment: "#groupsContainer",
-        connectWith: "#groupsContainer .group-box .group-tabs",
-        helper: 'clone',
-        revert: 'invalid',
-        appendTo: '#groupsContainer',
-        tolerance: "pointer",
-        start: function(e, ui){
-            ui.placeholder.height(1); // Altezza forzata a 1px: super hack per evitare strani salti nel posizionamento del placeholder.
-        },
-        over: tabsHandler.sortableTabOverGroup
-      }).disableSelection();
+      if(_DBG_ENABLE_TAB_DRAGGING) {
+          div.find('.group-tabs').sortable({ // FIXME Drag su gruppo vuoto non funziona. Neanche su un gruppo "semivuoto", ovvero nell'area dove "group-tabs" non si estende.
+            containment: "#groupsContainer",
+            connectWith: "#groupsContainer .group-box .group-tabs",
+            helper: 'clone',
+            revert: 'invalid',
+            appendTo: '#groupsContainer',
+            tolerance: "pointer",
+            start: function(e, ui){
+                ui.placeholder.height(1); // Altezza forzata a 1px: super hack per evitare strani salti nel posizionamento del placeholder.
+            },
+            over: tabsHandler.sortableTabOverGroup
+          }).disableSelection();
+      }
       div.click(tabsHandler.groupClicked); // Deve stare sotto a "draggable" altrimenti cattura anche i click del dragging
       
       div.css('position', ''); // Elimina il valore 'position' che viene dato da draggable... noi abbiamo il nostro position=absolute nel CSS

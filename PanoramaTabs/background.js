@@ -95,7 +95,7 @@ function updateGroupWithVisibleTabs(windowId, groupId) {
       }
 
       info.groups[groupId].tabs = array;
-      // FIXME Se lo chiamiamo qui, toglierlo dalle altre parti...
+
       saveGroups();
       
       // Se la tab visibile era una Panorama, dobbiamo riaggiornare la sua UI
@@ -114,13 +114,14 @@ function saveGroups(syncNow) {
       var clean_groups = getCleanGroupsForStorage(info.groups);
       chrome.storage.local.set({'groups': clean_groups});
       chrome.storage.local.set({'currentGroup': info.currentGroup}); // FIXME Controllare quanto spazio viene usato...
-      /*chrome.storage.local.getBytesInUse(null, function(b) {
+      chrome.storage.local.getBytesInUse(null, function(b) {
           console.log(b);
-      });*/
+      });
     } catch(ex) { }
   });
   
-  if(syncNow) {
+  // FIXME Salviamo nell'area sincronizzata, ma poi non la leggiamo mai...
+  /*if(syncNow) {
       syncGroups();
   } else {
       // Se non c'è nessuno che sta già aspettando di sincronizzare...
@@ -131,7 +132,7 @@ function saveGroups(syncNow) {
           timeoutRunning = true;
           syncTimeout = setTimeout(syncGroups, 30000);
       }
-  }
+  }*/
 }
 
 function syncGroups() {
@@ -471,7 +472,6 @@ chrome.windows.onFocusChanged.addListener(function(windowId) {
  * stesso tempo (ma le avrà aperte digitando l'url a mano: se avesse premuto il pulsante
  * gli avremmo chiuso le precedenti).
  * FIXME Il container fa casino su resize: se la finestra del browser viene ridimensionata, ridimensionare proporzionalmente anche i gruppi (http://stackoverflow.com/questions/18836234/extend-body-when-absolute-positioned-element-is-outside-the-browser-window)
- * FIXME Se la tab attiva è già una panorama, chiuderla e tornare alla precedente tab attiva nel gruppo attivo.
  * FIXME Se c'è già una vecchia tab panorama attiva, riattivare quella! (stesso comportamento di chrome con la pagina settings)
 */
 chrome.browserAction.onClicked.addListener(function(tab) {
