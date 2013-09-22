@@ -93,11 +93,13 @@ var tabsHandler = {
   
   // FIXME Se eliminiamo il gruppo corrente, esce immediatamente da panorama: non è il comportamento di Firefox
   groupDeleteClicked: function(e) {
-      var group = $(e.target).closest('.group-box');
-      chrome.extension.getBackgroundPage().deleteGroup(group.attr('data-group-id'));
-      group.effect('puff', {percent: 1}, 300, function() {
-          group.remove();
-      }); 
+      if(confirm('Are you sure you want to delete this group?')) { // TODO Sostituire questo Alert con una soluzione meno brutta
+          var group = $(e.target).closest('.group-box');
+          chrome.extension.getBackgroundPage().deleteGroup(group.attr('data-group-id'));
+          group.effect('puff', {percent: 1}, 300, function() {
+              group.remove();
+          });
+      }
   },
   
   groupClicked: function(e) {

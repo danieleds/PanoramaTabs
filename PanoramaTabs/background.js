@@ -237,7 +237,6 @@ function loadGroupInWindow(groupId, windowId, callback) {
 }
 
 function deleteGroup(id) {
-    // TODO Chiedere conferma (o permettere di annullare) [FARLO IN popup.js]
     getGroupInfo(function(info){
         var curGroup = info.currentGroup;
         info.groups.splice(id, 1);
