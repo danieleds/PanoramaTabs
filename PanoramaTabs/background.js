@@ -127,13 +127,10 @@ function saveGroups(syncNow) {
       var json_clean_groups = JSON.stringify(clean_groups);
       chrome.storage.local.set({'groups': compressString(json_clean_groups)});
       chrome.storage.local.set({'currentGroup': info.currentGroup});
-      chrome.storage.local.getBytesInUse(null, function(b) {
-          console.log(b);
-      });
     } catch(ex) { }
   });
   
-  // FIXME Salviamo nell'area sincronizzata, ma poi non la leggiamo mai...
+  // FIXME Salviamo nell'area sincronizzata, ma poi non la leggiamo mai... Inoltre, occupiamo più spazio di quello disponibile...
   /*if(syncNow) {
       syncGroups();
   } else {
