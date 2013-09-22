@@ -108,12 +108,25 @@ function updateGroupWithVisibleTabs(windowId, groupId) {
     });
 }
 
+function compressString(str) {
+    var zip = new JSZip();
+    zip.file("a", str);
+    return zip.generate({type: 'string', compression: 'DEFLATE'});
+}
+
+function decompressString(compressedStr) {
+    var zip = new JSZip(compressedStr);
+    var f = zip.file("a");
+    return f.asText();
+}
+
 function saveGroups(syncNow) {
   getGroupInfo(function(info){
     try {
       var clean_groups = getCleanGroupsForStorage(info.groups);
-      chrome.storage.local.set({'groups': clean_groups});
-      chrome.storage.local.set({'currentGroup': info.currentGroup}); // FIXME Controllare quanto spazio viene usato...
+      var json_clean_groups = JSON.stringify(clean_groups);
+      chrome.storage.local.set({'groups': compressString(json_clean_groups)});
+      chrome.storage.local.set({'currentGroup': info.currentGroup});
       chrome.storage.local.getBytesInUse(null, function(b) {
           console.log(b);
       });
@@ -426,8 +439,19 @@ function initWindow(windowId) {
         firstWndCreated = true;
         // Caricamento dello stato salvato (solo per la prima finestra aperta)
         chrome.storage.local.get(['groups', 'currentGroup'], function(items) {
-            
+        
+            var loadDefaultGroups = false;
             if(items.groups === undefined || items.currentGroup === undefined) {
+                loadDefaultGroups = true;
+            } else {
+                try {
+                  items.groups = JSON.parse(decompressString(items.groups));
+                } catch (ex) {
+                  loadDefaultGroups = true;
+                };
+            }
+            
+            if(loadDefaultGroups) {
                 // Panorama non era mai stato avviato: inseriamo nel gruppo predefinito le tab attive.
                 updateGroupWithVisibleTabs(windowId, 0);
                 enableChangeListeners();
