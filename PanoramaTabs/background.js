@@ -145,14 +145,16 @@ function saveGroups(syncNow) {
   }*/
 }
 
+/*
 function syncGroups() {
   clearTimeout(syncTimeout);
   timeoutRunning = false;
-  chrome.storage.local.get(['groups', 'currentGroup'], function(items) {
+  chrome.storage.local.get(['groups', 'currentGroup'], function(items) { // FIXME Decompress...
       chrome.storage.sync.set({'groups': items['groups']});
       chrome.storage.sync.set({'currentGroup': items['currentGroup']});
   });
 }
+*/
 
 function getCleanGroupsForStorage(groups) {
     // Convertiamo in stringa JSON e riconvertiamo in oggetto: in questo modo eliminiamo
